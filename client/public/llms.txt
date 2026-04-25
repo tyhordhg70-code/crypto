@@ -1,0 +1,38 @@
+# BlockExplorer
+
+> Multi-Crypto Blockchain Explorer, Analytics & Crypto News — real-time data across 14+ blockchains.
+
+BlockExplorer is a professional-grade, real-time blockchain explorer that allows anyone to look up transactions, track confirmations, monitor live cryptocurrency prices, and read the latest crypto news. It supports Bitcoin, Ethereum, and 14+ additional blockchain networks.
+
+## What BlockExplorer Does
+
+- **Transaction Lookup**: Search any Bitcoin or Ethereum transaction by its hash to see status, confirmations, sender, recipient, amount (in crypto and USD), fees, block height, and timestamp.
+- **Live Crypto Prices**: Real-time prices for Bitcoin (BTC), Ethereum (ETH), BNB, XRP, Solana (SOL), Dogecoin (DOGE), Cardano (ADA), Chainlink (LINK), Avalanche (AVAX), Polkadot (DOT), and more — with 24h change, market cap, and 7-day price chart.
+- **Block Explorer**: Network statistics including current block height, average confirmation time, hash rate, and mempool activity for both Bitcoin and Ethereum.
+- **Crypto News**: Aggregated headlines from CoinDesk, CoinTelegraph, Decrypt, and Bitcoin Magazine — updated every 15 minutes.
+- **14+ Blockchain Networks**: Coverage includes Bitcoin, Ethereum, BNB Chain, Solana, Avalanche, Polkadot, Cardano, and more.
+
+## Pages
+
+- [Home](/) — Animated landing page with live crypto ticker, price charts, market stats, and news feed.
+- [Explorer](/explorer) — Block explorer with network stats, confirmation tracker, and aggregated news.
+- [Transaction Detail](/tx/:hash) — Full transaction breakdown: status, confirmations progress bar, addresses, amounts in crypto + USD, fee, block height, timestamp.
+- [About](/about) — Full description of the service, data sources (CoinGecko, mempool.space, Ethereum public nodes), legitimacy information, and privacy overview.
+- [Privacy Policy](/privacy) — Details on data collection (minimal), cookies, third-party providers, and security practices.
+- [Terms of Service](/terms) — Terms governing use of the service, data accuracy disclaimers, and prohibited uses.
+
+## Legitimacy
+
+BlockExplorer is a legitimate, free blockchain explorer. It does not require account creation, does not collect personal data, and never asks for private keys or seed phrases. All transaction data is sourced from publicly auditable providers (mempool.space for Bitcoin, public Ethereum RPC nodes for Ethereum) and can be independently verified on those platforms or on Etherscan. Prices come from CoinGecko, a widely trusted independent cryptocurrency data aggregator.
+
+## Technology
+
+Built with React (TypeScript), Express.js, TanStack Query, Recharts, PostgreSQL, and Drizzle ORM. Prices sourced from CoinGecko. Bitcoin transactions from mempool.space. Ethereum transactions from public RPC nodes. News from CoinDesk, CoinTelegraph, Decrypt, and Bitcoin Magazine RSS feeds.
+
+## Use Cases
+
+- Verify that a crypto payment was received and confirmed
+- Track how many block confirmations a transaction has
+- Check current Bitcoin or Ethereum price in USD
+- Read the latest blockchain and crypto news in one place
+- Explore live network statistics for major blockchains

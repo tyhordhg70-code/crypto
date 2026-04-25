@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#4F46E5"/>
+  <!-- Top face of cube -->
+  <polygon points="32,8 54,20 32,32 10,20" fill="#818CF8"/>
+  <!-- Left face of cube -->
+  <polygon points="10,20 32,32 32,52 10,40" fill="#3730A3"/>
+  <!-- Right face of cube -->
+  <polygon points="54,20 32,32 32,52 54,40" fill="#6366F1"/>
+  <!-- Chain link top -->
+  <rect x="29" y="4" width="6" height="10" rx="3" fill="white" opacity="0.9"/>
+  <!-- Chain link bottom -->
+  <rect x="29" y="50" width="6" height="10" rx="3" fill="white" opacity="0.9"/>
+</svg>
