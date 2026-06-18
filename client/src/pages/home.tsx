@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { NavHeader } from "@/components/nav-header";
+import heroChairImg from "@assets/image_1781813786122.png";
+import universeChairImg from "@assets/image_1781813707895.png";
 
 const CDN = "https://loutre.blockchair.net/w4/assets/images/blockchains";
 const TOKEN_CDN = "https://loutre.blockchair.net/contract-enricher/token";
@@ -246,15 +248,29 @@ export default function Home() {
       <section
         style={{
           background: "linear-gradient(160deg, #061428 0%, #0a1e3d 55%, #0d2348 100%)",
-          backgroundImage: "linear-gradient(160deg, #061428 0%, #0a1e3d 55%, #0d2348 100%), url('https://loutre.blockchair.net/w4/assets/images/homepage/hero-bg.webp')",
-          backgroundSize: "cover, cover",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center, center",
-          backgroundBlendMode: "normal, overlay",
-          paddingBottom: "40px",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px 0" }}>
+        {/* Chair illustration — large right-side background element */}
+        <img
+          src={heroChairImg}
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            right: "-20px",
+            top: "-10px",
+            height: "115%",
+            width: "auto",
+            opacity: 0.45,
+            pointerEvents: "none",
+            userSelect: "none",
+            objectFit: "contain",
+          }}
+        />
+
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px 40px", position: "relative", zIndex: 1 }}>
           {/* Title row + Cuborg card */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 32, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 280 }}>
@@ -281,6 +297,7 @@ export default function Home() {
               padding: "16px 20px",
               width: 280,
               flexShrink: 0,
+              backdropFilter: "blur(8px)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                 <img
@@ -322,7 +339,7 @@ export default function Home() {
           </div>
 
           {/* Search bar */}
-          <div style={{ marginTop: 32, paddingBottom: 8 }}>
+          <div style={{ marginTop: 32 }}>
             <form onSubmit={handleSearch} style={{ maxWidth: 700 }}>
               <div style={{
                 display: "flex",
@@ -468,12 +485,11 @@ export default function Home() {
             </p>
           </div>
           <img
-            src="https://loutre.blockchair.net/w4/assets/images/homepage/universe-chair.svg"
+            src={universeChairImg}
             alt="Universe chair illustration"
             width={320}
             height={320}
             style={{ width: "min(320px, 100%)", height: "auto", flexShrink: 0 }}
-            onError={e => { (e.currentTarget as HTMLElement).style.display = "none"; }}
           />
         </div>
       </section>
