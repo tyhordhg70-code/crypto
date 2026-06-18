@@ -1,15 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Search, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { useLocation as useWouterLocation } from "wouter";
 
 interface NavHeaderProps {
   transparent?: boolean;
 }
 
 export function NavHeader({ transparent = false }: NavHeaderProps) {
-  const [, navigate] = useWouterLocation();
+  const [, navigate] = useLocation();
   const [searchInput, setSearchInput] = useState("");
 
   function handleSearch(e: React.FormEvent) {
@@ -18,64 +15,67 @@ export function NavHeader({ transparent = false }: NavHeaderProps) {
     if (q) navigate(`/tx/${q}`);
   }
 
-  const base = transparent
-    ? "absolute top-0 left-0 right-0 z-50"
-    : "sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200/60";
-
   return (
-    <header className={`${base}`}>
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+    <header
+      className="sticky top-0 z-50 border-b"
+      style={{ background: "var(--color-bg-base, #fff)", borderColor: "rgba(0,0,0,0.08)" }}
+    >
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
         <Link href="/" data-testid="link-logo">
-          <div className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900">
+          <div className="flex items-center gap-2 cursor-pointer select-none shrink-0 mr-2">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="6" fill="#2170FF" />
+              <text x="5" y="20" fill="white" fontSize="14" fontWeight="900" fontFamily="monospace">Bx</text>
+            </svg>
+            <span className="font-semibold text-[15px] tracking-tight text-gray-900 hidden sm:block">
               BlockExplorer
             </span>
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="link-nav-home"
-            >
-              Home
-            </Button>
-          </Link>
+        <nav className="hidden md:flex items-center gap-0.5">
           <Link href="/explorer">
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
               data-testid="link-nav-explorer"
             >
-              Explorer
-            </Button>
+              Explorers
+            </button>
+          </Link>
+          <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+            Products
+          </button>
+          <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+            Research
+          </button>
+          <Link href="/simulate">
+            <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              data-testid="link-nav-simulate"
+            >
+              Simulate
+            </button>
           </Link>
         </nav>
 
-        <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1 max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <form onSubmit={handleSearch} className="flex-1 max-w-md ml-auto">
+          <div className="relative">
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search tx hash..."
+              placeholder="Search addresses, transactions and blocks"
               data-testid="input-nav-search"
-              className={`w-full pl-9 pr-4 py-2 text-sm rounded-lg border outline-none transition-all focus:ring-2 focus:ring-indigo-400/40 ${
-                transparent
-                  ? "bg-white/10 border-white/20 text-white placeholder-white/50 backdrop-blur"
-                  : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400"
-              }`}
+              className="w-full pl-4 pr-20 py-1.5 text-sm bg-gray-100 border border-gray-200 rounded-full outline-none focus:border-blue-400 focus:bg-white transition-colors placeholder-gray-400"
             />
+            <button
+              type="submit"
+              data-testid="button-nav-search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-semibold text-white rounded-full transition-colors"
+              style={{ background: "#2170FF" }}
+            >
+              Search
+            </button>
           </div>
-          <Button type="submit" size="sm" data-testid="button-nav-search">
-            Search
-          </Button>
         </form>
       </div>
     </header>
