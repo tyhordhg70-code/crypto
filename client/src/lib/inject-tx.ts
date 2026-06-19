@@ -203,38 +203,58 @@ export function injectRealTx(
   const feeSats = tx.fee || 0;
   const vsizeExact = tx.weight / 4;
 
-  // Transaction status: block height link + confirmations
+  // Transaction status: block height link + confirmations (handle unconfirmed)
   const statusV = valueByCaption(doc, "Transaction status");
   if (statusV) {
     const a = statusV.querySelector(
       "[data-in-block] a, a[data-href-template]",
     ) as HTMLAnchorElement | null;
-    if (a && blockH != null) {
-      setText(a, fmtInt(blockH));
-      a.setAttribute("href", `https://blockchair.com/bitcoin/block/${blockH}`);
+    if (a) {
+      if (blockH != null) {
+        setText(a, fmtInt(blockH));
+        a.setAttribute(
+          "href",
+          `https://blockchair.com/bitcoin/block/${blockH}`,
+        );
+      } else {
+        setText(a, "Unconfirmed");
+        a.removeAttribute("href");
+      }
     }
     const c = statusV.querySelector("[data-confirmations]");
     if (c) {
       setText(c, fmtInt(confs));
-      c.setAttribute("data-block", String(blockH));
+      c.setAttribute("data-block", String(blockH != null ? blockH : 0));
     }
   }
 
-  // Time: relative + absolute
+  // Time: relative + absolute (clear demo values when unconfirmed)
   const timeV = valueByCaption(doc, "Time");
-  if (timeV && tx.status && tx.status.block_time) {
-    const sec = tx.status.block_time;
-    const iso = new Date(sec * 1000).toISOString().replace("Z", "000Z");
+  if (timeV) {
     const rel = timeV.querySelector("time[data-time-relative]");
-    if (rel) {
-      setText(rel, relTime(sec));
-      rel.setAttribute("datetime", iso);
-      rel.setAttribute("data-timer-start", String(sec * 1000));
-    }
     const abs = timeV.querySelector("time[data-time]");
-    if (abs) {
-      setText(abs, absUTC(sec));
-      abs.setAttribute("datetime", iso);
+    if (tx.status && tx.status.block_time) {
+      const sec = tx.status.block_time;
+      const iso = new Date(sec * 1000).toISOString().replace("Z", "000Z");
+      if (rel) {
+        setText(rel, relTime(sec));
+        rel.setAttribute("datetime", iso);
+        rel.setAttribute("data-timer-start", String(sec * 1000));
+      }
+      if (abs) {
+        setText(abs, absUTC(sec));
+        abs.setAttribute("datetime", iso);
+      }
+    } else {
+      if (rel) {
+        setText(rel, "Unconfirmed");
+        rel.removeAttribute("datetime");
+        rel.removeAttribute("data-timer-start");
+      }
+      if (abs) {
+        setText(abs, "Pending in mempool");
+        abs.removeAttribute("datetime");
+      }
     }
   }
 
@@ -279,9 +299,15 @@ export function injectRealTx(
         ? "Coinbase (Newly Generated Coins)"
         : (v.prevout && v.prevout.scriptpubkey_address) || "Unknown";
       const val = (v.prevout && v.prevout.value) || 0;
+      // Validate external fields before interpolating into HTML.
+      const prevTxid =
+        typeof v.txid === "string" && /^[0-9a-fA-F]{64}$/.test(v.txid)
+          ? v.txid
+          : "";
+      const prevVout = Number.isFinite(Number(v.vout)) ? Number(v.vout) : 0;
       const prevLink =
-        !cb && v.txid
-          ? `<a class="| | inline-block va-middle | br-full" href="https://blockchair.com/bitcoin/transaction/${v.txid}/bitcoin-main/0?o=${v.vout}"><svg aria-hidden="true" class="action-icon form-el-square-sm"><g style="transform: rotate(180deg); transform-origin: center;"><use href="#icon-link-arrow-horizontal"></use></g></svg></a>`
+        !cb && prevTxid
+          ? `<a class="| | inline-block va-middle | br-full" href="https://blockchair.com/bitcoin/transaction/${prevTxid}/bitcoin-main/0?o=${prevVout}"><svg aria-hidden="true" class="action-icon form-el-square-sm"><g style="transform: rotate(180deg); transform-origin: center;"><use href="#icon-link-arrow-horizontal"></use></g></svg></a>`
           : "";
       return ioRow(
         "Input",

@@ -81,16 +81,21 @@ export default function Transaction() {
         });
 
         // Delegate blockchair.com link clicks at the document level so links we
-        // inject later (rebuilt input/output rows) are handled too.
+        // inject later (rebuilt input/output rows) are handled too. Use duck
+        // typing for `closest` — the click target comes from the iframe realm,
+        // so `instanceof Element` (parent realm) would be false for it.
         doc.addEventListener(
           "click",
           (e) => {
-            const target = e.target as Element | null;
+            const target = e.target as {
+              closest?: (s: string) => Element | null;
+            } | null;
             const a =
-              target &&
-              (target.closest(
-                'a[href^="https://blockchair.com"]',
-              ) as HTMLAnchorElement | null);
+              target && typeof target.closest === "function"
+                ? (target.closest(
+                    'a[href^="https://blockchair.com"]',
+                  ) as HTMLAnchorElement | null)
+                : null;
             if (a) {
               e.preventDefault();
               routeHref(a.href);
@@ -103,22 +108,33 @@ export default function Transaction() {
       }
     }
 
+    // Guard so we run exactly once per document, whether triggered by the
+    // immediate path below or the iframe's load event.
+    let ran = false;
     async function onReady() {
+      if (ran) return;
+      ran = true;
       wireUp();
       if (!isRealLookup) return;
-      const doc = iframe?.contentDocument;
-      if (!doc) return;
+      const d = iframe?.contentDocument;
+      if (!d) return;
       try {
         const data = await fetchTxData(hash);
-        if (data) injectRealTx(doc, data.tx, data.tip, data.btcPrice);
+        if (data) injectRealTx(d, data.tx, data.tip, data.btcPrice);
       } catch {
         /* leave the pristine demo page on any failure */
       }
     }
 
-    // Handle the case where the iframe finished loading before this effect ran.
+    // Handle the case where tx.html already finished loading before this effect
+    // ran. A freshly-mounted iframe's document is about:blank (also "complete"),
+    // so require the real tx.html URL before running early.
     const doc = iframe.contentDocument;
-    if (doc && doc.readyState !== "loading") {
+    if (
+      doc &&
+      doc.readyState === "complete" &&
+      /tx\.html/.test(doc.URL || "")
+    ) {
       onReady();
     }
     iframe.addEventListener("load", onReady);
