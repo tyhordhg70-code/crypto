@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { fetchTxData, injectRealTx } from "../lib/inject-tx";
 
@@ -9,7 +9,8 @@ export default function Transaction() {
   const [location, navigate] = useLocation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const pageUrl = `${import.meta.env.BASE_URL}tx.html`;
+  // ?v= busts the browser cache when the saved tx.html markup/styles change.
+  const pageUrl = `${import.meta.env.BASE_URL}tx.html?v=20260619`;
 
   // Hash from the current /tx/:hash route (decoded, suffix stripped).
   const rawHash = location.startsWith("/tx/")
@@ -20,9 +21,16 @@ export default function Transaction() {
   const isRealLookup =
     /^[0-9a-fA-F]{64}$/.test(hash) && hash.toLowerCase() !== DEMO_HASH;
 
+  // Hide the saved demo page behind a loader for real lookups until the real tx
+  // data has been injected, so the demo values never flash on screen first.
+  const [revealed, setRevealed] = useState(!isRealLookup);
+
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
+
+    // Reset the loader whenever the looked-up hash changes.
+    setRevealed(!isRealLookup);
 
     function routeQuery(q: string) {
       const v = encodeURIComponent(q);
@@ -114,17 +122,21 @@ export default function Transaction() {
     async function onReady() {
       if (ran) return;
       ran = true;
-      console.log("[bx-tx] onReady hash=" + hash + " isReal=" + isRealLookup);
       wireUp();
       if (!isRealLookup) return;
       const d = iframe?.contentDocument;
-      if (!d) { console.log("[bx-tx] no contentDocument"); return; }
+      if (!d) {
+        setRevealed(true);
+        return;
+      }
       try {
         const data = await fetchTxData(hash);
-        console.log("[bx-tx] fetchTxData result:", data ? "ok tip=" + data.tip : "null");
-        if (data) { injectRealTx(d, data.tx, data.tip, data.btcPrice); console.log("[bx-tx] injection done"); }
-      } catch (e) {
-        console.error("[bx-tx] onReady error:", e);
+        if (data) injectRealTx(d, data.tx, data.tip, data.btcPrice);
+      } catch {
+        /* leave the pristine page untouched on failure */
+      } finally {
+        // Reveal once injection has finished (or failed) so the demo never flashes.
+        setRevealed(true);
       }
     }
 
@@ -144,19 +156,48 @@ export default function Transaction() {
   }, [location, navigate, hash, isRealLookup]);
 
   return (
-    <iframe
-      key={hash || "demo"}
-      ref={iframeRef}
-      src={pageUrl}
-      title="Bitcoin Transaction"
-      data-testid="iframe-transaction"
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        border: "none",
-      }}
-    />
+    <>
+      <iframe
+        key={hash || "demo"}
+        ref={iframeRef}
+        src={pageUrl}
+        title="Bitcoin Transaction"
+        data-testid="iframe-transaction"
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          border: "none",
+        }}
+      />
+      {!revealed && (
+        <div
+          aria-busy="true"
+          data-testid="tx-loading"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2147483647,
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              border: "3px solid #e6e8eb",
+              borderTopColor: "#1d6fe0",
+              borderRadius: "50%",
+              animation: "bxspin 0.8s linear infinite",
+            }}
+          />
+          <style>{`@keyframes bxspin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
+    </>
   );
 }

@@ -1269,33 +1269,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   fetchNews().catch((e) => console.warn("[news] Startup cache warm failed:", e));
 
-  // ─── Flash expiry job ────────────────────────────────────────────────────────
-  // Every 5 minutes, mark expired flash txs so the UI shows them as "Expired".
-  // The tx is already mined on-chain (correct nonce, no gap); this just updates
-  // the local DB status for the BlockExplorer transaction page.
-  async function runFlashExpiryJob() {
-    let expired: SimulatedTransaction[];
-    try {
-      expired = await storage.getExpiredFlashTransactions(Date.now());
-    } catch (e) {
-      console.warn("[expiry] DB query failed:", e);
-      return;
-    }
-    if (expired.length === 0) return;
-
-    for (const flash of expired) {
-      try {
-        await storage.markFlashExpired(flash.txHash);
-        console.log(`[expiry] Marked ${flash.txHash.slice(0, 16)}… as expired`);
-      } catch (e: any) {
-        console.warn(`[expiry] Failed to mark ${flash.txHash}:`, e?.message);
-      }
-    }
-  }
-
-  setInterval(() => {
-    runFlashExpiryJob().catch((e) => console.warn("[expiry] Job threw:", e));
-  }, 5 * 60 * 1000);
+  // Flash-tx expiry is derived lazily at read time from `expiresAt` (see the
+  // /api/tx/:hash handler: `isDropped = expiresAt != null && Date.now() > expiresAt`),
+  // so no background polling is needed. A previous setInterval ran a DB query
+  // every 5 minutes around the clock, which kept the serverless Postgres compute
+  // awake 24/7 and burned the compute quota even with zero traffic. Removing it
+  // lets the database suspend while idle; the user-visible status is unchanged.
 
   return httpServer;
 }
