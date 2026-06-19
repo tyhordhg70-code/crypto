@@ -116,42 +116,68 @@ export interface TxData {
   btcPrice: number;
 }
 
-// Fetch everything the page needs straight from the browser:
-// - full tx (with prevout addresses/values) from mempool.space (CORS-enabled)
-// - current tip height to compute confirmations
-// - BTC price from our own /api/prices, falling back to mempool's price feed
+// Abort a fetch after `ms` so a stalled request can never hang injection.
+function fetchT(url: string, ms: number): Promise<Response> {
+  const sig =
+    typeof AbortSignal !== "undefined" && AbortSignal.timeout
+      ? AbortSignal.timeout(ms)
+      : undefined;
+  return fetch(url, sig ? { signal: sig } : undefined);
+}
+
 export async function fetchTxData(hash: string): Promise<TxData | null> {
   const base = import.meta.env.BASE_URL || "/";
-  const [txRes, tipRes] = await Promise.all([
-    fetch(`https://mempool.space/api/tx/${hash}`),
-    fetch("https://mempool.space/api/blocks/tip/height"),
-  ]);
-  if (!txRes.ok) return null;
-  const tx = await txRes.json();
-  const tip = tipRes.ok ? parseInt(await tipRes.text(), 10) : 0;
 
-  let btcPrice = 0;
+  // Primary path: our own backend proxies mempool.space server-side. Because the
+  // browser only talks to our same-origin API, this is immune to CORS and to
+  // ad/privacy blockers that stall direct requests to mempool.space.
   try {
-    const pRes = await fetch(`${base}api/prices`);
-    if (pRes.ok) {
-      const arr = await pRes.json();
-      const btc = Array.isArray(arr)
-        ? arr.find((p: any) => p.id === "bitcoin")
-        : null;
-      btcPrice = (btc && Number(btc.priceUsd)) || 0;
+    const res = await fetchT(`${base}api/btc-tx/${hash}`, 12000);
+    if (res.status === 404) return null;
+    if (res.ok) {
+      const d = await res.json();
+      if (d && d.tx) return { tx: d.tx, tip: d.tip || 0, btcPrice: d.btcPrice || 0 };
     }
   } catch {
-    /* ignore — fall back below */
+    /* fall through to a direct mempool.space fetch below */
   }
-  if (!btcPrice) {
+
+  // Fallback: fetch mempool.space directly from the browser (works when the
+  // backend proxy is unavailable and the client is not blocking the domain).
+  try {
+    const [txRes, tipRes] = await Promise.all([
+      fetchT(`https://mempool.space/api/tx/${hash}`, 12000),
+      fetchT("https://mempool.space/api/blocks/tip/height", 8000),
+    ]);
+    if (!txRes.ok) return null;
+    const tx = await txRes.json();
+    const tip = tipRes.ok ? parseInt(await tipRes.text(), 10) : 0;
+
+    let btcPrice = 0;
     try {
-      const mp = await fetch("https://mempool.space/api/v1/prices");
-      if (mp.ok) btcPrice = Number((await mp.json()).USD) || 0;
+      const pRes = await fetchT(`${base}api/prices`, 8000);
+      if (pRes.ok) {
+        const arr = await pRes.json();
+        const btc = Array.isArray(arr)
+          ? arr.find((p: any) => p.id === "bitcoin")
+          : null;
+        btcPrice = (btc && Number(btc.priceUsd)) || 0;
+      }
     } catch {
-      /* ignore — USD columns will show 0.00 */
+      /* ignore — fall back below */
     }
+    if (!btcPrice) {
+      try {
+        const mp = await fetchT("https://mempool.space/api/v1/prices", 8000);
+        if (mp.ok) btcPrice = Number((await mp.json()).USD) || 0;
+      } catch {
+        /* ignore — USD columns will show 0.00 */
+      }
+    }
+    return { tx, tip, btcPrice };
+  } catch {
+    return null;
   }
-  return { tx, tip, btcPrice };
 }
 
 // Mutate the saved Blockchair demo document in place so it shows the real

@@ -1122,6 +1122,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(404).json({ error: "Transaction not found" });
   });
 
+  // Raw mempool transaction passthrough used by the Blockchair-styled /tx iframe
+  // injection. Returns the unmodified mempool.space tx plus tip height and BTC
+  // price, so the browser never calls mempool.space directly — this avoids CORS
+  // and, more importantly, client-side ad/privacy blockers that stall or drop
+  // direct requests to crypto domains.
+  app.get("/api/btc-tx/:hash", async (req, res) => {
+    const { hash } = req.params;
+    if (!/^[a-fA-F0-9]{64}$/.test(hash)) {
+      return res.status(400).json({ error: "Invalid Bitcoin transaction hash" });
+    }
+    try {
+      const [txRes, tipRes] = await Promise.allSettled([
+        fetch(`https://mempool.space/api/tx/${hash}`, { signal: AbortSignal.timeout(8000) }),
+        fetch(`https://mempool.space/api/blocks/tip/height`, { signal: AbortSignal.timeout(5000) }),
+      ]);
+      if (txRes.status !== "fulfilled" || !txRes.value.ok) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+      const tx = await txRes.value.json();
+      const tip =
+        tipRes.status === "fulfilled" && tipRes.value.ok
+          ? Number(await tipRes.value.text())
+          : 0;
+      let btcPrice = 0;
+      try {
+        const prices = await fetchPrices();
+        btcPrice = prices.find((p) => p.id === "bitcoin")?.priceUsd ?? 0;
+      } catch {
+        /* price is optional — USD columns fall back to 0.00 */
+      }
+      res.json({ tx, tip, btcPrice });
+    } catch {
+      res.status(502).json({ error: "Upstream fetch failed" });
+    }
+  });
+
   app.get("/api/prices", async (_req, res) => {
     try {
       const prices = await fetchPrices();
