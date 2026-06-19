@@ -147,6 +147,16 @@
       100% { transform: rotate(360deg); }
     }
     </style>
+    <style id="bx-mobile-grid">
+      /* Force the Inputs|Outputs grid to stay side-by-side on mobile,
+         matching the desktop layout (overrides Blockchair's ≤767px stacked rule). */
+      @media (max-width: 767px) {
+        .transaction-events--utxo {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr !important;
+        }
+      }
+    </style>
       </head>
 
 
