@@ -146,7 +146,10 @@
       0%   { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    </style></head>
+    </style>
+      <style id="bx-gap-fix">/* Compact UTXO layout: stack Inputs above Outputs to remove the empty void under the shorter Outputs column; cards flow 2-up on wide screens. Matches Blockchair's own 768px 2-col switch. */
+  @media (min-width:768px){#events .transaction-events--utxo{--tx-events-cols:1fr !important}}
+  @media (min-width:1024px){#events .transaction-events--utxo>nav>ul.transaction-events{--tx-events-cols:1fr 1fr !important}}</style></head>
 
 
 <body class="| base-layout | | ff-sans fs-1 fw-normal color-text-primary" x-data="globalState(false)" x-resize.document="docSize.width = $width; docSize.height = $height;">
