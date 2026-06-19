@@ -114,15 +114,17 @@ export default function Transaction() {
     async function onReady() {
       if (ran) return;
       ran = true;
+      console.log("[bx-tx] onReady hash=" + hash + " isReal=" + isRealLookup);
       wireUp();
       if (!isRealLookup) return;
       const d = iframe?.contentDocument;
-      if (!d) return;
+      if (!d) { console.log("[bx-tx] no contentDocument"); return; }
       try {
         const data = await fetchTxData(hash);
-        if (data) injectRealTx(d, data.tx, data.tip, data.btcPrice);
-      } catch {
-        /* leave the pristine demo page on any failure */
+        console.log("[bx-tx] fetchTxData result:", data ? "ok tip=" + data.tip : "null");
+        if (data) { injectRealTx(d, data.tx, data.tip, data.btcPrice); console.log("[bx-tx] injection done"); }
+      } catch (e) {
+        console.error("[bx-tx] onReady error:", e);
       }
     }
 
