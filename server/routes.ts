@@ -1122,29 +1122,94 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(404).json({ error: "Transaction not found" });
   });
 
-  // Raw mempool transaction passthrough used by the Blockchair-styled /tx iframe
-  // injection. Returns the unmodified mempool.space tx plus tip height and BTC
-  // price, so the browser never calls mempool.space directly — this avoids CORS
-  // and, more importantly, client-side ad/privacy blockers that stall or drop
-  // direct requests to crypto domains.
+  // Raw transaction passthrough used by the Blockchair-styled /tx iframe
+  // injection. Returns the tx in mempool.space (Esplora) shape plus tip height
+  // and BTC price, so the browser never calls upstreams directly — this avoids
+  // CORS and, more importantly, client-side ad/privacy blockers that stall or
+  // drop direct requests to crypto domains.
+  //
+  // mempool.space is the primary source. It purges transactions that never
+  // confirmed (e.g. unconfirmed double-spends / RBF replacements), returning
+  // 404 for them. blockchain.info still serves those, so it is used as a
+  // fallback and its payload is converted to the Esplora shape on the server.
   app.get("/api/btc-tx/:hash", async (req, res) => {
     const { hash } = req.params;
     if (!/^[a-fA-F0-9]{64}$/.test(hash)) {
       return res.status(400).json({ error: "Invalid Bitcoin transaction hash" });
     }
+
+    // Map a blockchain.info `rawtx` payload to the mempool.space (Esplora) shape
+    // the injection consumes. blockchain.info exposes only its internal tx_index
+    // (not the previous txid), so input prev-tx links are intentionally omitted.
+    const toEsploraTx = (b: any) => {
+      const confirmed = b.block_height != null;
+      const inputs = Array.isArray(b.inputs) ? b.inputs : [];
+      const outputs = Array.isArray(b.out) ? b.out : [];
+      const isOpReturn = (s: unknown) =>
+        typeof s === "string" && s.startsWith("6a");
+      return {
+        txid: b.hash,
+        version: b.ver ?? 1,
+        locktime: b.lock_time ?? 0,
+        size: b.size ?? 0,
+        weight: b.weight ?? (b.size ? b.size * 4 : 0),
+        fee: b.fee ?? 0,
+        status: {
+          confirmed,
+          block_height: confirmed ? b.block_height : null,
+          block_time: confirmed ? b.time : undefined,
+        },
+        vin: inputs.map((i: any) => {
+          const po = i.prev_out;
+          return {
+            is_coinbase: !po,
+            vout: po?.n,
+            prevout: po
+              ? { value: po.value ?? 0, scriptpubkey_address: po.addr }
+              : undefined,
+          };
+        }),
+        vout: outputs.map((o: any) => ({
+          value: o.value ?? 0,
+          scriptpubkey_address: o.addr,
+          scriptpubkey_type: isOpReturn(o.script) ? "op_return" : undefined,
+        })),
+      };
+    };
+
     try {
       const [txRes, tipRes] = await Promise.allSettled([
         fetch(`https://mempool.space/api/tx/${hash}`, { signal: AbortSignal.timeout(8000) }),
         fetch(`https://mempool.space/api/blocks/tip/height`, { signal: AbortSignal.timeout(5000) }),
       ]);
-      if (txRes.status !== "fulfilled" || !txRes.value.ok) {
-        return res.status(404).json({ error: "Transaction not found" });
-      }
-      const tx = await txRes.value.json();
       const tip =
         tipRes.status === "fulfilled" && tipRes.value.ok
           ? Number(await tipRes.value.text())
           : 0;
+
+      let tx: any = null;
+      if (txRes.status === "fulfilled" && txRes.value.ok) {
+        // Already the Esplora shape the injection expects.
+        tx = await txRes.value.json();
+      } else {
+        // Fallback: blockchain.info still serves dropped/unconfirmed txs.
+        try {
+          const biRes = await fetch(`https://blockchain.info/rawtx/${hash}`, {
+            signal: AbortSignal.timeout(8000),
+          });
+          if (biRes.ok) {
+            const bi = await biRes.json();
+            if (bi && bi.hash) tx = toEsploraTx(bi);
+          }
+        } catch {
+          /* fall through to the 404 below */
+        }
+      }
+
+      if (!tx) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
       let btcPrice = 0;
       try {
         const prices = await fetchPrices();
